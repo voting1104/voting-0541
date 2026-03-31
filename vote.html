@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVote - Professional Portal</title>
+    
+    <!-- SheetJS Library for Excel Processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============================================================
+           CSS STYLES
+        ============================================================ */
+        :root { 
+            --primary: #2563eb; 
+            --success: #059669; 
+            --dark: #0f172a; 
+            --glass: rgba(255, 255, 255, 0.9); 
+            --gmail: #ea4335;
+        }
+
+        * { 
+            transition: all 0.3s ease; 
+            font-family: 'Inter', sans-serif; 
+            box-sizing: border-box; 
+        }
+
+        body { 
+            margin: 0; padding: 20px; min-height: 100vh; 
+            display: flex; justify-content: center; align-items: center; 
+            background: #cbd5e1; background-size: cover; 
+            background-position: center; background-attachment: fixed; 
+        }
+
+        .overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.4); z-index: -1; 
+        }
+
+        .container { 
+            background: var(--glass); backdrop-filter: blur(12px); 
+            width: 100%; max-width: 500px; padding: 30px; 
+            border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); 
+        }
+
+        h2 { text-align: center; color: var(--dark); margin-bottom: 20px; }
+
+        .manager-section { 
+            background: rgba(255,255,255,0.5); padding: 15px; 
+            border-radius: 15px; margin-bottom: 15px; border: 1px solid #ddd; 
+        }
+
+        input { 
+            width: 100%; padding: 12px; margin: 8px 0; 
+            border: 1.5px solid #ddd; border-radius: 10px; 
+        }
+
+        button { 
+            width: 100%; padding: 12px; border: none; 
+            border-radius: 10px; cursor: pointer; 
+            font-weight: 600; color: white; margin-top: 5px; 
+        }
+
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        .btn-login { background: var(--dark); }
+        .btn-primary { background: var(--primary); }
+        .btn-auto { background: #7c3aed; }
+        .btn-toggle { background: #64748b; margin-bottom: 10px; }
+        .btn-toggle.active { background: #dc2626; }
+
+        .bg-grid { 
+            display: grid; grid-template-columns: 1fr 1fr; 
+            gap: 8px; margin-bottom: 10px; 
+        }
+
+        .btn-bg-set { 
+            background: #64748b; font-size: 11px; 
+            padding: 8px; border-radius: 8px; 
+        }
+
+        .card { 
+            background: white; padding: 10px; border-radius: 12px; 
+            margin-bottom: 8px; display: flex; align-items: center; 
+            border: 1px solid #eee; 
+        }
+
+        .symbol-frame { 
+            width: 45px; height: 45px; border-radius: 50%; 
+            overflow: hidden; margin-right: 12px; border: 1px solid #ddd; 
+        }
+
+        .symbol-frame img { width: 100%; height: 100%; object-fit: cover; }
+
+        .queue-container { 
+            max-height: 200px; overflow-y: auto; background: #fff; 
+            border-radius: 10px; padding: 10px; border: 1px solid #ccc; 
+            margin-top: 10px; 
+        }
+
+        .queue-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 11px; padding: 8px 0; border-bottom: 1px solid #eee; 
+        }
+
+        .results-box { 
+            margin-top: 20px; padding: 15px; background: white; 
+            border-radius: 15px; border: 2px solid var(--primary); 
+        }
+
+        .hidden { display: none; }
+        label { font-size: 12px; font-weight: bold; color: var(--dark); display: block; }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    <div class="container">
+
+        <!-- LOGIN SECTION -->
+        <div id="loginSection">
+            <div style="text-align: center; font-size: 40px; margin-bottom: 10px;">🗳️</div>
+            <h2>SecureVote Login</h2>
+            <input type="text" id="loginID" placeholder="User ID">
+            <input type="password" id="loginPass" placeholder="Password">
+            <button class="btn-login" onclick="handleLogin()">Sign In</button>
+            <div style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">
+                <button onclick="localStorage.clear(); location.reload();" style="background:none; color:red; font-size:10px; text-decoration:underline; border:none; cursor:pointer; width:100%;">Reset All Browser Data</button>
+            </div>
+        </div>
+
+        <!-- MANAGER DASHBOARD -->
+        <div id="managerDash" class="hidden">
+            <h2>Admin Dashboard</h2>
+            
+            <div class="manager-section">
+                <label>Election Status Control</label>
+                <button id="toggleResultsBtn" class="btn-toggle" onclick="toggleResultsVisibility()">End Election & Show Results: OFF</button>
+            </div>
+
+            <div class="manager-section">
+                <label>🖼️ Set Page Backgrounds</label>
+                <div class="bg-grid">
+                    <button class="btn-bg-set" onclick="document.getElementById('bgLogin').click()">Login BG</button>
+                    <button class="btn-bg-set" onclick="document.getElementById('bgVoter').click()">Voting BG</button>
+                    <button class="btn-bg-set" onclick="document.getElementById('bgResult').click()">Result BG</button>
+                    <button class="btn-bg-set" onclick="document.getElementById('bgManager').click()">Admin BG</button>
+                </div>
+                <input type="file" id="bgLogin" class="hidden" onchange="uploadBG('login', event)">
+                <input type="file" id="bgVoter" class="hidden" onchange="uploadBG('voter', event)">
+                <input type="file" id="bgResult" class="hidden" onchange="uploadBG('result', event)">
+                <input type="file" id="bgManager" class="hidden" onchange="uploadBG('manager', event)">
+            </div>
+
+            <div class="manager-section">
+                <label>➕ Add New Candidate</label>
+                <input type="text" id="newCandName" placeholder="Candidate Name">
+                <button class="btn-primary" onclick="addNewCandidate()">Add to Election</button>
+            </div>
+
+            <div class="manager-section">
+                <label>Bulk Register Voters (Excel)</label>
+                <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-auto" onclick="handleExcelUpload()">📁 Process File</button>
+                    <button onclick="clearVoters()" style="background:#dc2626; width: auto; font-size: 10px;">Clear Queue</button>
+                </div>
+            </div>
+
+            <div class="manager-section">
+                <label>Voter Send Queue</label>
+                <button onclick="bulkGmailBCC()" style="background:#ea4335; font-size: 10px; margin-bottom: 10px;">🚀 MAIL ALL (LINK ONLY)</button>
+                <div id="voterQueue" class="queue-container"></div>
+            </div>
+
+            <h4>Live Candidate Tally</h4>
+            <div id="managerResults"></div>
+            <button onclick="location.reload()" style="background:#fee2e2; color:#dc2626; margin-top:20px;">Logout Admin</button>
+        </div>
+
+        <!-- VOTER DASHBOARD -->
+        <div id="voterDash" class="hidden">
+            <h2 id="vH">Digital Ballot Box</h2>
+            <div id="voterBallot"></div>
+            <div id="voterResultsView" class="hidden results-box">
+                <h4 style="margin:0; text-align:center;">Final Election Standings</h4>
+                <div id="vResults" style="margin-top:10px;"></div>
+            </div>
+            <button onclick="location.reload()" style="margin-top:20px; color: black; border: 1px solid #ccc; background: white;">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================================
+           JAVASCRIPT LOGIC
+        ============================================================ */
+        const MID = "23b81a05hw";
+        const MPASS = "shankari";
+
+        const DEFAULT_CANDS = {
+            "Panvi": { votes: 0, image: "https://munsifdaily.com/wp-content/uploads/2024/12/BRS-1.jpg" },
+            "Charan": { votes: 0, image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Logo_of_the_Bharatiya_Janata_Party.svg/1280px-Logo_of_the_Bharatiya_Janata_Party.svg.png" }
+        };
+
+        let candidates = JSON.parse(localStorage.getItem('ext_candidates')) || DEFAULT_CANDS;
+        let voters = JSON.parse(localStorage.getItem('ext_voters')) || [];
+        let showResultsToVoters = JSON.parse(localStorage.getItem('showResults')) || false;
+        let backgrounds = JSON.parse(localStorage.getItem('ext_bgs')) || { login: "", voter: "", manager: "", result: "" };
+        let activeVoter = null;
+
+        window.onload = () => applyBG('login');
+
+        // --- AUTH ---
+        function handleLogin() {
+            const idInput = document.getElementById('loginID').value.trim(); 
+            const passInput = document.getElementById('loginPass').value.trim(); 
+
+            if (idInput === MID && passInput === MPASS) {
+                applyBG('manager');
+                loadManager();
+            } else {
+                const v = voters.find(u => u.id === idInput && u.pass === passInput);
+                if (v) {
+                    activeVoter = v;
+                    showResultsToVoters ? applyBG('result') : applyBG('voter');
+                    loadVoter();
+                } else {
+                    alert(`Invalid Credentials!\nNote: IDs are case-sensitive.`);
+                }
+            }
+        }
+
+        // --- EXCEL ---
+        function handleExcelUpload() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) return alert("Select file!");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                jsonData.forEach(row => {
+                    let contact = "", id = "", pass = "";
+                    for (let key in row) {
+                        let k = key.toLowerCase().trim();
+                        if (k.includes("mail") || k.includes("contact") || k.includes("wa")) contact = String(row[key]).trim();
+                        if (k === "id" || k.includes("ids")) id = String(row[key]).trim();
+                        if (k.includes("pass") || k.includes("dob")) pass = String(row[key]).trim();
+                    }
+                    if (id && pass && contact && !voters.find(v => v.id == id)) {
+                        voters.push({ id, pass, contact, hasVoted: false, sent: false });
+                    }
+                });
+                saveData(); renderVoterQueue();
+                alert("Excel Processed Successfully!");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderVoterQueue() {
+            const queue = document.getElementById('voterQueue');
+            if (voters.length === 0) { queue.innerHTML = "<p style='text-align:center; color:#999; font-size:11px;'>Empty</p>"; return; }
+            queue.innerHTML = voters.map((v, index) => `
+                <div class="queue-item" style="border-left: 5px solid ${v.sent ? '#059669' : '#dc2626'}; padding-left:10px;">
+                    <div><strong>${v.contact}</strong><br><small>ID: ${v.id}</small></div>
+                    <button onclick="sendMail(${index})" style="background:#ea4335; width:auto; padding:4px 10px; font-size:10px;">Send</button>
+                </div>
+            `).join('');
+        }
+
+        function sendMail(index) {
+            const v = voters[index];
+            const msg = encodeURIComponent(`Portal: ${window.location.href}\nID: ${v.id}\nPass: ${v.pass}`);
+            v.sent = true; saveData(); renderVoterQueue();
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${v.contact}&su=Vote+Access&body=${msg}`, '_blank');
+        }
+
+        function bulkGmailBCC() {
+            const emails = voters.map(v => v.contact).join(',');
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&bcc=${emails}&su=Election+Started&body=Link:+${window.location.href}`, '_blank');
+        }
+
+        // --- CANDIDATES ---
+        function addNewCandidate() {
+            const name = document.getElementById('newCandName').value.trim();
+            if (name) { candidates[name] = { votes: 0, image: "" }; document.getElementById('newCandName').value = ""; saveData(); loadManager(); }
+        }
+
+        function renameCandidate(old) {
+            const n = prompt("New name:", old);
+            if (n && n !== old) { candidates[n] = candidates[old]; delete candidates[old]; saveData(); loadManager(); }
+        }
+
+        function changePhoto(name, event) {
+            const reader = new FileReader();
+            reader.onload = (e) => { candidates[name].image = e.target.result; saveData(); loadManager(); };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        function deleteCandidate(name) {
+            if(confirm("Remove Candidate?")) { delete candidates[name]; saveData(); loadManager(); }
+        }
+
+        // --- SYSTEM ---
+        function applyBG(page) {
+            if (backgrounds[page]) document.body.style.backgroundImage = `url('${backgrounds[page]}')`;
+            else document.body.style.backgroundColor = "#cbd5e1";
+        }
+
+        function uploadBG(page, event) {
+            const reader = new FileReader();
+            reader.onload = (e) => { backgrounds[page] = e.target.result; localStorage.setItem('ext_bgs', JSON.stringify(backgrounds)); applyBG(page); };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        function toggleResultsVisibility() {
+            showResultsToVoters = !showResultsToVoters;
+            localStorage.setItem('showResults', JSON.stringify(showResultsToVoters));
+            updateToggleBtn();
+            if(activeVoter) updateVoterUI();
+        }
+
+        function updateToggleBtn() {
+            const btn = document.getElementById('toggleResultsBtn');
+            if(!btn) return;
+            btn.innerText = `End Election & Show Results: ${showResultsToVoters ? 'ON' : 'OFF'}`;
+            btn.className = showResultsToVoters ? "btn-toggle active" : "btn-toggle";
+        }
+
+        function loadManager() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('voterDash').classList.add('hidden');
+            document.getElementById('managerDash').classList.remove('hidden');
+            updateToggleBtn(); renderVoterQueue();
+            const list = document.getElementById('managerResults');
+            list.innerHTML = Object.keys(candidates).map(name => `
+                <div class="card">
+                    <div class="symbol-frame"><img src="${candidates[name].image || ''}"></div>
+                    <div style="flex-grow:1">
+                        <b>${name}</b><br>
+                        <button onclick="renameCandidate('${name}')" style="font-size:8px; width:auto; padding:2px; background:#eee; color:black;">Name</button>
+                        <button onclick="document.getElementById('editImg_${name}').click()" style="font-size:8px; width:auto; padding:2px; background:#eee; color:black;">Photo</button>
+                        <button onclick="deleteCandidate('${name}')" style="font-size:8px; width:auto; padding:2px; background:#fee2e2; color:red;">X</button>
+                        <input type="file" id="editImg_${name}" class="hidden" onchange="changePhoto('${name}', event)">
+                    </div>
+                    <div style="font-weight:bold">${candidates[name].votes} Votes</div>
+                </div>
+            `).join('');
+        }
+
+        function loadVoter() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('voterDash').classList.remove('hidden');
+            updateVoterUI();
+        }
+
+        function updateVoterUI() {
+            const box = document.getElementById('voterBallot');
+            const resView = document.getElementById('voterResultsView');
+            box.innerHTML = "";
+
+            if (showResultsToVoters) {
+                document.getElementById('vH').innerText = "Election Closed";
+                resView.classList.remove('hidden');
+                document.getElementById('vResults').innerHTML = Object.keys(candidates).map(n => 
+                    `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee;"><b>${n}</b> <span>${candidates[n].votes}</span></div>`).join("");
+                return;
+            }
+
+            if (activeVoter.hasVoted) {
+                document.getElementById('vH').innerText = "Vote Verified ✅";
+                box.innerHTML = "<p style='text-align:center;'>Your vote has been securely recorded.</p>";
+            } else {
+                document.getElementById('vH').innerText = "Digital Ballot Box";
+                Object.keys(candidates).forEach(name => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div class="symbol-frame"><img src="${candidates[name].image || ''}"></div><div style="flex-grow:1"><b>${name}</b></div><button onclick="castVote('${name}')" style="background:var(--primary); width:auto; padding:8px 20px;">Vote</button>`;
+                    box.appendChild(card);
+                });
+            }
+        }
+
+        function castVote(name) {
+            if (confirm(`Vote for ${name}?`)) {
+                candidates[name].votes++;
+                activeVoter.hasVoted = true;
+                const vIdx = voters.findIndex(v => v.id == activeVoter.id);
+                if(vIdx !== -1) voters[vIdx].hasVoted = true;
+                saveData(); updateVoterUI();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('ext_candidates', JSON.stringify(candidates));
+            localStorage.setItem('ext_voters', JSON.stringify(voters));
+        }
+
+        function clearVoters() {
+            if(confirm("Clear current list?")) { voters = []; saveData(); renderVoterQueue(); }
+        }
+    </script>
+</body>
+</html>
